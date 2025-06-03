@@ -1,0 +1,123 @@
+# Deployment Configuration for AgentCore
+# Supports: Windows (CUDA/CPU), Linux (CUDA/CPU), MacOS (Metal3/CPU)
+
+# Platform Detection
+platform:
+  auto_detect: true  # Automatically detect platform and capabilities
+  force_platform: null  # Override auto-detection if needed (windows/linux/macos)
+
+# Hardware Acceleration
+hardware:
+  # MacOS Metal 3 Configuration
+  macos:
+    metal:
+      enabled: true
+      priority: 1  # Highest priority for MacOS
+      fallback_to_cpu: true
+      memory_management:
+        high_watermark_ratio: 0.0
+        allocator_policy: default
+        shader_cache: true
+        compile_options: true
+    cpu:
+      enabled: true
+      priority: 2
+      threads: auto  # Will use optimal thread count
+
+  # Windows Configuration
+  windows:
+    cuda:
+      enabled: true
+      priority: 1
+      fallback_to_cpu: true
+      memory_management:
+        max_split_size_mb: 512
+        allow_growth: true
+    cpu:
+      enabled: true
+      priority: 2
+      threads: auto
+
+  # Linux Configuration
+  linux:
+    cuda:
+      enabled: true
+      priority: 1
+      fallback_to_cpu: true
+      memory_management:
+        max_split_size_mb: 512
+        allow_growth: true
+    cpu:
+      enabled: true
+      priority: 2
+      threads: auto
+
+# Framework Selection
+frameworks:
+  # Prioritized for MacOS Metal 3
+  macos:
+    primary:
+      - name: "PyTorch"
+        metal_support: true
+        priority: 1
+      - name: "TensorFlow"
+        metal_support: true
+        priority: 2
+    fallback:
+      - name: "ONNX Runtime"
+        priority: 3
+
+  # Windows/Linux Frameworks
+  windows_linux:
+    cuda:
+      - name: "PyTorch"
+        priority: 1
+      - name: "TensorFlow"
+        priority: 2
+    cpu:
+      - name: "ONNX Runtime"
+        priority: 1
+      - name: "PyTorch"
+        priority: 2
+
+# Model Selection
+models:
+  # MacOS Metal 3 Optimized Models
+  macos:
+    metal_optimized:
+      - name: "GPT-2"
+        metal_support: true
+        priority: 1
+      - name: "BERT"
+        metal_support: true
+        priority: 2
+    cpu_fallback:
+      - name: "DistilBERT"
+        priority: 1
+
+  # Windows/Linux Models
+  windows_linux:
+    cuda_optimized:
+      - name: "GPT-2"
+        priority: 1
+      - name: "BERT"
+        priority: 2
+    cpu_fallback:
+      - name: "DistilBERT"
+        priority: 1
+
+# Memory Management
+memory:
+  macos:
+    metal:
+      cache_size: 0  # Disable cache to prevent memory bloat
+      high_watermark_ratio: 0.0
+    cpu:
+      max_memory: auto
+
+  windows_linux:
+    cuda:
+      max_memory: auto
+      allow_growth: true
+    cpu:
+      max_memory: auto 

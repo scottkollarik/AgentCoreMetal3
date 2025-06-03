@@ -1,0 +1,42 @@
+vector_store:
+  type: "chroma"
+  settings:
+    persist_directory: "/data/chroma"
+    anonymized_telemetry: false
+    allow_reset: true
+    
+  # Collection settings
+  collections:
+    default:
+      embedding_function: "sentence-transformers"
+      embedding_model: "all-MiniLM-L6-v2"
+      metadata_config:
+        hnsw:
+          space: "cosine"
+          construction_ef: 100
+          search_ef: 50
+          M: 16
+    
+  # Memory settings
+  memory:
+    short_term:
+      max_items: 1000
+      ttl_days: 7
+    long_term:
+      max_items: 10000
+      ttl_days: 30
+    
+  # Platform-specific optimizations
+  platform:
+    macos:
+      metal:
+        enabled: true
+        priority: 1
+    windows:
+      cuda:
+        enabled: true
+        priority: 1
+    linux:
+      cuda:
+        enabled: true
+        priority: 1 

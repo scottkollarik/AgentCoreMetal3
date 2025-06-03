@@ -1,0 +1,66 @@
+services:
+  agentcore:
+    platform: linux/arm64/v8
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - TARGETPLATFORM=linux/arm64
+        - USE_GPU=true
+    ports:
+      - "8001:8001"
+    volumes:
+      - .:/app
+      - ./memory/chroma_db:/app/memory/chroma_db
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CHROMA_SERVER_HOST=chroma
+      - CHROMA_SERVER_PORT=8000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - chroma
+    networks:
+      - agentcore-network
+
+  chroma:
+    image: chromadb/chroma:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - chroma-data:/data/chroma
+    environment:
+      - ALLOW_RESET=true
+      - ANONYMIZED_TELEMETRY=false
+    networks:
+      - agentcore-network
+
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    ports:
+      - "8888:8888"
+    volumes:
+      - .:/app
+      - ./notebooks:/app/notebooks
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - CHROMA_SERVER_HOST=chroma
+      - CHROMA_SERVER_PORT=8000
+    depends_on:
+      - chroma
+    networks:
+      - agentcore-network
+
+volumes:
+  chroma-data:
+    driver: local
+
+networks:
+  agentcore-network:
+    driver: bridge 
