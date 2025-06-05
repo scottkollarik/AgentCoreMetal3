@@ -86,7 +86,7 @@ python examples/run_basic_workflow.py
 
 AgentCore supports multiple deployment configurations optimized for different platforms:
 
-### MacOS (Apple Silicon)
+### macOS (Apple Silicon)
 - **Metal 3 Acceleration (Recommended)**
   - Optimized for Apple Silicon (M1/M2/M3/M4)
   - Automatic Metal shader optimization
