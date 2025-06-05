@@ -1,4 +1,5 @@
 import logging
+import os
 from typing import Dict, List, Optional, Any
 import chromadb
 from chromadb.config import Settings
