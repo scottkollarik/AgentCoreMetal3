@@ -10,6 +10,7 @@ from agents.execution_agent import ExecutionAgent
 from tools.web_search import WebSearchTool
 from tools.summarizer import SummarizerTool
 from memory.vector_memory import VectorMemory
+from memory.error_memory import ErrorMemory
 
 # Load environment variables
 load_dotenv()
@@ -26,9 +27,18 @@ with open('configs/agent_config.yaml', 'r') as f:
 
 # Initialize components
 planner = PlanningAgent(config['planning_agent'])
+error_memory = ErrorMemory(config['memory'])
 web_search = WebSearchTool(max_results=5).create_tool()
-summarizer = SummarizerTool(model_name="gpt-4", max_length=500).create_tool()
-executor = ExecutionAgent(config['execution_agent'], tools=[web_search, summarizer])
+summarizer = SummarizerTool(
+    model_name="llama2",
+    max_length=500,
+    error_memory=error_memory
+).create_tool()
+executor = ExecutionAgent(
+    config['execution_agent'],
+    tools=[web_search, summarizer],
+    error_memory=error_memory
+)
 memory = VectorMemory(config['memory'])
 
 class TaskRequest(BaseModel):

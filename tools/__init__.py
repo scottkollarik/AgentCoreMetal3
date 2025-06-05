@@ -2,6 +2,6 @@
 Tools package for AgentCore
 """
 
-from .search_tool import SearchTool
+from .web_search import WebSearchTool
 
-__all__ = ['SearchTool'] 
+__all__ = ['WebSearchTool'] 

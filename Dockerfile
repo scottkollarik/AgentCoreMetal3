@@ -1,67 +1,78 @@
-# Use Python 3.10 slim image with platform specification
-FROM --platform=linux/arm64/v8 python:3.10-slim
+# Use multi-stage build for better layer management
+FROM python:3.11-slim as builder
 
-# Set working directory
-WORKDIR /app
-
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
-    software-properties-common \
-    git \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set base environment variables
-ENV PYTHONPATH=/app
-ENV PYTHONUNBUFFERED=1
-ENV PIP_DEFAULT_TIMEOUT=100
-ENV PIP_DISABLE_PIP_VERSION_CHECK=1
-ENV PIP_NO_CACHE_DIR=1
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
 # Platform-specific configurations
 ARG TARGETPLATFORM
 ARG USE_GPU=false
 
-RUN if [ "$USE_GPU" = "true" ]; then \
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    git \
+    graphviz \
+    graphviz-dev \
+    pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+# Platform-specific optimizations
+RUN if [ "$USE_GPU" = "false" ]; then \
         if [ "$TARGETPLATFORM" = "linux/arm64" ]; then \
-            echo "Configuring for Apple Silicon (M4) with Metal 3" && \
-            # Metal 3 specific optimizations \
-            export PYTORCH_ENABLE_MPS_FALLBACK=1 && \
-            export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0 && \
-            export PYTORCH_MPS_ALLOCATOR_POLICY=default && \
-            export PYTORCH_MPS_DEVICE=0 && \
-            export PYTORCH_MPS_CACHE_SIZE=0 && \
-            # Performance tuning \
-            export PYTORCH_MPS_USE_METAL_SHADER_CACHE=1 && \
-            export PYTORCH_MPS_USE_METAL_COMPILE_OPTIONS=1; \
+            echo "Configuring for Apple Silicon (M4) CPU-only" && \
+            export PYTORCH_ENABLE_MPS_FALLBACK=0 && \
+            export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0; \
         elif [ "$TARGETPLATFORM" = "linux/amd64" ]; then \
-            echo "Configuring for Linux x86_64 with CUDA" && \
-            export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512; \
+            echo "Configuring for Linux x86_64 CPU-only" && \
+            export PYTORCH_CUDA_VISIBLE_DEVICES="" && \
+            export PYTORCH_CPU_THREADS=$(nproc); \
         elif [ "$TARGETPLATFORM" = "windows/amd64" ]; then \
-            echo "Configuring for Windows x86_64 with CUDA" && \
-            export PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512; \
+            echo "Configuring for Windows x86_64 CPU-only" && \
+            export PYTORCH_CUDA_VISIBLE_DEVICES="" && \
+            export PYTORCH_CPU_THREADS=$(nproc); \
         fi \
-    else \
-        echo "Configuring for CPU-only setup" && \
-        export PYTORCH_CUDA_VISIBLE_DEVICES="" && \
-        export PYTORCH_MPS_HIGH_WATERMARK_RATIO=0.0; \
     fi
 
-# Copy requirements first to leverage Docker cache
+# Create and activate virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install Python dependencies
 COPY requirements.txt .
+RUN pip install --upgrade pip && \
+    pip install wheel && \
+    if [ "$USE_GPU" = "false" ]; then \
+        pip install --no-cache-dir -r requirements.txt --no-deps && \
+        pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu; \
+    else \
+        pip install --no-cache-dir -r requirements.txt; \
+    fi
 
-# Install Python dependencies with platform-specific considerations
-RUN pip install --no-cache-dir -r requirements.txt
+# Final stage
+FROM python:3.11-slim
 
-# Copy the rest of the application
+# Copy virtual environment from builder
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    graphviz \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Copy application code
 COPY . .
 
-# Create necessary directories
-RUN mkdir -p memory/chroma_db
-
-# Expose port for API
-EXPOSE 8000
+# Set environment variables
+ENV PYTHONPATH=/app
 
 # Command to run the application
-CMD ["python", "-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"] 
+CMD ["python", "-m", "app.main"] 

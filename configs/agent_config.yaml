@@ -1,19 +1,22 @@
 # Agent Configuration
 
 planning_agent:
-  model_name: "gpt-4"
+  model_name: "llama2"
+  model_type: "ollama"
   temperature: 0.7
-  max_tokens: 1000
+  max_tokens: 500
   system_prompt: "You are a planning agent that breaks down complex tasks into manageable steps."
 
 execution_agent:
-  model_name: "gpt-4"
+  model_name: "llama2"
+  model_type: "ollama"
   temperature: 0.5
-  max_tokens: 2000
+  max_tokens: 500
   system_prompt: "You are an execution agent that carries out tasks step by step."
 
 monitoring_agent:
-  model_name: "gpt-4"
+  model_name: "llama2"
+  model_type: "ollama"
   temperature: 0.3
   max_tokens: 500
   system_prompt: "You are a monitoring agent that evaluates task execution and provides feedback."
@@ -21,8 +24,11 @@ monitoring_agent:
 # Memory Configuration
 memory:
   type: "vector"
-  embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+  embedding_model: "mxbai-embed-large"
   max_history: 1000
+  index_name: "agent_memory"
+  base_url: "http://localhost:11434"
+  persist_directory: "./memory/chroma_db"
 
 # Tool Configuration
 tools:
